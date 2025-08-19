@@ -23,18 +23,25 @@ export 'src/api.dart'
         GenerateContentResponse,
         GenerationConfig,
         ThinkingConfig,
+        GroundingMetadata,
+        GroundingChunk,
+        GroundingSupport,
         HarmBlockThreshold,
         HarmCategory,
         HarmProbability,
         HarmBlockMethod,
+        MapsGroundingChunk,
         PromptFeedback,
         ResponseModalities,
         SafetyRating,
         SafetySetting,
+        SearchEntryPoint,
+        Segment,
         UrlContextMetadata,
         UrlMetadata,
         UrlRetrievalStatus,
-        UsageMetadata;
+        UsageMetadata,
+        WebGroundingChunk;
 export 'src/base_model.dart'
     show GenerativeModel, ImagenModel, LiveGenerativeModel;
 export 'src/chat.dart' show ChatSession, StartChatExtension;
@@ -80,6 +87,9 @@ export 'src/tool.dart'
         FunctionCallingConfig,
         FunctionCallingMode,
         FunctionDeclaration,
+        GoogleMaps,
+        LatLng,
+        RetrievalConfig,
         Tool,
         ToolConfig,
         UrlContext;

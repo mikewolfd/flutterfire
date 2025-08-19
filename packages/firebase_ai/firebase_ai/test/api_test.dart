@@ -1307,6 +1307,197 @@ void main() {
                   (e) => e.message, 'message', contains('UrlContextMetadata'))));
         });
       });
+
+      group('Google Maps grounding metadata parsing', () {
+        test('parses valid response with Google Maps grounding metadata', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'The Italian Place in Alexandria, VA, is good for children.'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'groundingMetadata': {
+                  'webSearchQueries': [],
+                  'googleMapsWidgetContextToken': 'widgetcontent/token123',
+                  'groundingChunks': [
+                    {
+                      'maps': {
+                        'uri': 'https://maps.google.com/?cid=9001322937822692826',
+                        'title': 'The Italian Place',
+                        'text': '**About:**\n\n* **Type:** Italian Restaurant\n* **Address:** 621 Wythe St, Alexandria, VA 22314, USA\n* **Rating:** 4.2 (411 reviews)',
+                        'placeId': 'places/ChIJOTRDf_qwt4kR2kV_WYUf63w'
+                      }
+                    }
+                  ],
+                  'groundingSupport': [
+                    {
+                      'segment': {
+                        'endIndex': 79,
+                        'text': 'The Italian Place in Alexandria, VA, is good for children.'
+                      },
+                      'groundingChunkIndices': [0]
+                    }
+                  ]
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final groundingMetadata = response.candidates.first.groundingMetadata;
+
+          expect(groundingMetadata, isNotNull);
+          expect(groundingMetadata!.googleMapsWidgetContextToken, 'widgetcontent/token123');
+          expect(groundingMetadata.groundingChunks, hasLength(1));
+          
+          final groundingChunk = groundingMetadata.groundingChunks.first;
+          expect(groundingChunk.maps, isNotNull);
+          expect(groundingChunk.web, isNull);
+          
+          final mapsChunk = groundingChunk.maps!;
+          expect(mapsChunk.uri, 'https://maps.google.com/?cid=9001322937822692826');
+          expect(mapsChunk.title, 'The Italian Place');
+          expect(mapsChunk.text, contains('Italian Restaurant'));
+          expect(mapsChunk.placeId, 'places/ChIJOTRDf_qwt4kR2kV_WYUf63w');
+        });
+
+        test('parses response with both web and maps grounding chunks', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Mixed content from web and maps.'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'groundingMetadata': {
+                  'webSearchQueries': ['test query'],
+                  'groundingChunks': [
+                    {
+                      'web': {
+                        'uri': 'https://example.com',
+                        'title': 'Web Page'
+                      }
+                    },
+                    {
+                      'maps': {
+                        'uri': 'https://maps.google.com/?cid=123',
+                        'title': 'Maps Place',
+                        'placeId': 'places/ChIJTest'
+                      }
+                    }
+                  ],
+                  'groundingSupport': []
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final groundingMetadata = response.candidates.first.groundingMetadata;
+
+          expect(groundingMetadata, isNotNull);
+          expect(groundingMetadata!.groundingChunks, hasLength(2));
+          
+          final webChunk = groundingMetadata.groundingChunks[0];
+          expect(webChunk.web, isNotNull);
+          expect(webChunk.maps, isNull);
+          expect(webChunk.web!.uri, 'https://example.com');
+          
+          final mapsChunk = groundingMetadata.groundingChunks[1];
+          expect(mapsChunk.maps, isNotNull);
+          expect(mapsChunk.web, isNull);
+          expect(mapsChunk.maps!.uri, 'https://maps.google.com/?cid=123');
+        });
+
+        test('parses response with empty maps grounding chunk', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Response with empty maps chunk.'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'groundingMetadata': {
+                  'webSearchQueries': [],
+                  'groundingChunks': [
+                    {
+                      'maps': {}
+                    }
+                  ],
+                  'groundingSupport': []
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final groundingMetadata = response.candidates.first.groundingMetadata;
+
+          expect(groundingMetadata, isNotNull);
+          expect(groundingMetadata!.groundingChunks, hasLength(1));
+          
+          final groundingChunk = groundingMetadata.groundingChunks.first;
+          expect(groundingChunk.maps, isNotNull);
+          expect(groundingChunk.maps!.uri, isNull);
+          expect(groundingChunk.maps!.title, isNull);
+          expect(groundingChunk.maps!.text, isNull);
+          expect(groundingChunk.maps!.placeId, isNull);
+        });
+
+        test('parses response without googleMapsWidgetContextToken', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Response without widget token.'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'groundingMetadata': {
+                  'webSearchQueries': [],
+                  'groundingChunks': [],
+                  'groundingSupport': []
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final groundingMetadata = response.candidates.first.groundingMetadata;
+
+          expect(groundingMetadata, isNotNull);
+          expect(groundingMetadata!.googleMapsWidgetContextToken, isNull);
+        });
+
+        test('throws FormatException for invalid maps grounding chunk structure', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'groundingMetadata': {
+                  'groundingChunks': [
+                    {
+                      'maps': 'not_a_map'
+                    }
+                  ]
+                }
+              }
+            ]
+          };
+          
+          expect(
+              () => VertexSerialization().parseGenerateContentResponse(jsonResponse),
+              throwsA(isA<FirebaseAISdkException>().having(
+                  (e) => e.message, 'message', contains('MapsGroundingChunk'))));
+        });
+      });
     });
   });
 }

@@ -317,6 +317,68 @@ void main() {
         );
       });
 
+      test('can pass a Google Maps tool', () async {
+        final (client, model) = createModel(
+          tools: [Tool.googleMaps()],
+        );
+        const prompt = 'Some prompt';
+        await client.checkRequest(
+          () => model.generateContent([Content.text(prompt)]),
+          verifyRequest: (_, request) {
+            expect(request['tools'], [
+              {'googleMaps': {}},
+            ]);
+          },
+          response: arbitraryGenerateContentResponse,
+        );
+      });
+
+      test('can pass Google Maps tool with retrieval config', () async {
+        final latLng = LatLng(latitude: 37.7749, longitude: -122.4194);
+        final retrievalConfig = RetrievalConfig(latLng: latLng);
+        final toolConfig = ToolConfig(retrievalConfig: retrievalConfig);
+        final (client, model) = createModel(
+          tools: [Tool.googleMaps()],
+          toolConfig: toolConfig,
+        );
+        const prompt = 'Some prompt';
+        await client.checkRequest(
+          () => model.generateContent([Content.text(prompt)]),
+          verifyRequest: (_, request) {
+            expect(request['tools'], [
+              {'googleMaps': {}},
+            ]);
+            expect(request['toolConfig'], {
+              'retrievalConfig': {
+                'latLng': {
+                  'latitude': 37.7749,
+                  'longitude': -122.4194,
+                },
+              },
+            });
+          },
+          response: arbitraryGenerateContentResponse,
+        );
+      });
+
+      test('can pass multiple tools including Google Maps', () async {
+        final (client, model) = createModel(
+          tools: [Tool.googleSearch(), Tool.googleMaps(), Tool.urlContext()],
+        );
+        const prompt = 'Some prompt';
+        await client.checkRequest(
+          () => model.generateContent([Content.text(prompt)]),
+          verifyRequest: (_, request) {
+            expect(request['tools'], [
+              {'googleSearch': {}},
+              {'googleMaps': {}},
+              {'urlContext': {}},
+            ]);
+          },
+          response: arbitraryGenerateContentResponse,
+        );
+      });
+
       test('can override tools and function calling config', () async {
         final (client, model) = createModel();
         const prompt = 'Some prompt';

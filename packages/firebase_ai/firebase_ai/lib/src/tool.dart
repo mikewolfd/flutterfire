@@ -21,12 +21,12 @@ import 'schema.dart';
 /// knowledge and scope of the model.
 final class Tool {
   // ignore: public_member_api_docs
-  Tool._(this._functionDeclarations, this._googleSearch, this._urlContext);
+  Tool._(this._functionDeclarations, this._googleSearch, this._urlContext, this._googleMaps);
 
   /// Returns a [Tool] instance with list of [FunctionDeclaration].
   static Tool functionDeclarations(
       List<FunctionDeclaration> functionDeclarations) {
-    return Tool._(functionDeclarations, null, null);
+    return Tool._(functionDeclarations, null, null, null);
   }
 
   /// Creates a tool that allows the model to use Grounding with Google Search.
@@ -47,7 +47,7 @@ final class Tool {
   ///
   /// Returns a `Tool` configured for Google Search.
   static Tool googleSearch({GoogleSearch googleSearch = const GoogleSearch()}) {
-    return Tool._(null, googleSearch, null);
+    return Tool._(null, googleSearch, null, null);
   }
 
   /// Creates a tool that allows the model to use URL context.
@@ -65,7 +65,27 @@ final class Tool {
   ///
   /// Returns a `Tool` configured for URL context.
   static Tool urlContext({UrlContext urlContext = const UrlContext()}) {
-    return Tool._(null, null, urlContext);
+    return Tool._(null, null, urlContext, null);
+  }
+
+  /// Creates a tool that allows the model to use Grounding with Google Maps.
+  ///
+  /// Grounding with Google Maps connects Gemini models with geospatial data
+  /// from Google Maps. Google Maps has access to information on over 250 million
+  /// places, including businesses, landmarks, and points of interest. You can
+  /// use this data to ground your model's responses, which enables your AI
+  /// applications and agents to provide local data and geospatial context.
+  ///
+  /// When using this feature, you are required to comply with the
+  /// "Grounding with Google Maps" usage requirements for your chosen API
+  /// provider.
+  ///
+  /// - [googleMaps]: An empty [GoogleMaps] object. The presence of this
+  ///   object in the list of tools enables the model to use Google Maps.
+  ///
+  /// Returns a `Tool` configured for Google Maps.
+  static Tool googleMaps({GoogleMaps googleMaps = const GoogleMaps()}) {
+    return Tool._(null, null, null, googleMaps);
   }
 
   /// A list of `FunctionDeclarations` available to the model that can be used
@@ -87,6 +107,10 @@ final class Tool {
   /// enhance its responses.
   final UrlContext? _urlContext;
 
+  /// A tool that allows the generative model to connect to Google Maps to
+  /// access and incorporate geospatial data from Google Maps.
+  final GoogleMaps? _googleMaps;
+
   /// Convert to json object.
   Map<String, Object> toJson() => {
         if (_functionDeclarations case final _functionDeclarations?)
@@ -95,7 +119,9 @@ final class Tool {
         if (_googleSearch case final _googleSearch?)
           'googleSearch': _googleSearch.toJson(),
         if (_urlContext case final _urlContext?)
-          'urlContext': _urlContext.toJson()
+          'urlContext': _urlContext.toJson(),
+        if (_googleMaps case final _googleMaps?)
+          'googleMaps': _googleMaps.toJson()
       };
 }
 
@@ -139,6 +165,57 @@ final class UrlContext {
   Map<String, Object> toJson() => {};
 }
 
+/// A tool that allows the generative model to connect to Google Maps to
+/// access and incorporate geospatial data from Google Maps.
+///
+/// Google Maps has access to information on over 250 million places, including
+/// businesses, landmarks, and points of interest. You can use this data to
+/// ground your model's responses, which enables your AI applications and
+/// agents to provide local data and geospatial context.
+///
+/// When using this feature, you are required to comply with the
+/// "Grounding with Google Maps" usage requirements for your chosen API
+/// provider.
+final class GoogleMaps {
+  // ignore: public_member_api_docs
+  const GoogleMaps();
+
+  /// Convert to json object.
+  Map<String, Object> toJson() => {};
+}
+
+/// Represents a latitude/longitude coordinate pair for Google Maps grounding.
+final class LatLng {
+  // ignore: public_member_api_docs
+  LatLng({required this.latitude, required this.longitude});
+
+  /// The latitude in degrees. Values must be within [-90.0, +90.0].
+  final double latitude;
+
+  /// The longitude in degrees. Values must be within [-180.0, +180.0).
+  final double longitude;
+
+  /// Convert to json object.
+  Map<String, Object> toJson() => {
+        'latitude': latitude,
+        'longitude': longitude,
+      };
+}
+
+/// Configuration for retrieval-based grounding with Google Maps.
+final class RetrievalConfig {
+  // ignore: public_member_api_docs
+  RetrievalConfig({required this.latLng});
+
+  /// The latitude/longitude coordinate pair for the location to search around.
+  final LatLng latLng;
+
+  /// Convert to json object.
+  Map<String, Object> toJson() => {
+        'latLng': latLng.toJson(),
+      };
+}
+
 /// Structured representation of a function declaration as defined by the
 /// [OpenAPI 3.03 specification](https://spec.openapis.org/oas/v3.0.3).
 ///
@@ -175,15 +252,20 @@ final class FunctionDeclaration {
 /// Config for tools to use with model.
 final class ToolConfig {
   // ignore: public_member_api_docs
-  ToolConfig({this.functionCallingConfig});
+  ToolConfig({this.functionCallingConfig, this.retrievalConfig});
 
   /// Config for function calling.
   final FunctionCallingConfig? functionCallingConfig;
+
+  /// Config for retrieval-based grounding with Google Maps.
+  final RetrievalConfig? retrievalConfig;
 
   /// Convert to json object.
   Map<String, Object?> toJson() => {
         if (functionCallingConfig case final config?)
           'functionCallingConfig': config.toJson(),
+        if (retrievalConfig case final config?)
+          'retrievalConfig': config.toJson(),
       };
 }
 

@@ -310,6 +310,25 @@ final class WebGroundingChunk {
   final String? domain;
 }
 
+/// A grounding chunk sourced from Google Maps.
+final class MapsGroundingChunk {
+  // ignore: public_member_api_docs
+  MapsGroundingChunk({this.uri, this.title, this.text, this.placeId});
+
+  /// The URI of the Google Maps place.
+  final String? uri;
+
+  /// The title/name of the place.
+  final String? title;
+
+  /// Detailed text information about the place including business hours,
+  /// address, rating, and other relevant details.
+  final String? text;
+
+  /// The Google Maps place ID for this location.
+  final String? placeId;
+}
+
 /// Represents a chunk of retrieved data that supports a claim in the model's
 /// response.
 ///
@@ -317,10 +336,13 @@ final class WebGroundingChunk {
 /// enabled.
 final class GroundingChunk {
   // ignore: public_member_api_docs
-  GroundingChunk({this.web});
+  GroundingChunk({this.web, this.maps});
 
   /// Contains details if the grounding chunk is from a web source.
   final WebGroundingChunk? web;
+
+  /// Contains details if the grounding chunk is from a Google Maps source.
+  final MapsGroundingChunk? maps;
 }
 
 /// Provides information about how a specific segment of the model's response
@@ -374,7 +396,8 @@ final class GroundingMetadata {
       {this.searchEntryPoint,
       required this.groundingChunks,
       required this.groundingSupport,
-      required this.webSearchQueries});
+      required this.webSearchQueries,
+      this.googleMapsWidgetContextToken});
 
   /// Google Search entry point for web searches.
   ///
@@ -386,7 +409,7 @@ final class GroundingMetadata {
   /// A list of [GroundingChunk]s.
   ///
   /// Each chunk represents a piece of retrieved content (e.g., from a web
-  /// page) that the model used to ground its response.
+  /// page or Google Maps place) that the model used to ground its response.
   final List<GroundingChunk> groundingChunks;
 
   /// A list of [GroundingSupport]s.
@@ -401,6 +424,12 @@ final class GroundingMetadata {
   /// These can be used to allow users to explore the search results
   /// themselves.
   final List<String> webSearchQueries;
+
+  /// Widget context token for Google Maps integration.
+  ///
+  /// This token is used when grounding with Google Maps is enabled and
+  /// provides context for rendering Google Maps widgets.
+  final String? googleMapsWidgetContextToken;
 }
 
 /// Metadata returned when URL context tool is used in a generation request.
@@ -1456,11 +1485,17 @@ GroundingMetadata _parseGroundingMetadata(Object? jsonObject) {
       } ??
       [];
 
+  final googleMapsWidgetContextToken = switch (jsonObject) {
+        {'googleMapsWidgetContextToken': final String? token} => token,
+        _ => null,
+      };
+
   return GroundingMetadata(
       searchEntryPoint: searchEntryPoint,
       groundingChunks: groundingChunks,
       groundingSupport: groundingSupport,
-      webSearchQueries: webSearchQueries);
+      webSearchQueries: webSearchQueries,
+      googleMapsWidgetContextToken: googleMapsWidgetContextToken);
 }
 
 Segment _parseSegment(Object? jsonObject) {
@@ -1487,6 +1522,19 @@ WebGroundingChunk _parseWebGroundingChunk(Object? jsonObject) {
   );
 }
 
+MapsGroundingChunk _parseMapsGroundingChunk(Object? jsonObject) {
+  if (jsonObject is! Map) {
+    throw unhandledFormat('MapsGroundingChunk', jsonObject);
+  }
+
+  return MapsGroundingChunk(
+    uri: jsonObject['uri'] as String?,
+    title: jsonObject['title'] as String?,
+    text: jsonObject['text'] as String?,
+    placeId: jsonObject['placeId'] as String?,
+  );
+}
+
 GroundingChunk _parseGroundingChunk(Object? jsonObject) {
   if (jsonObject is! Map) {
     throw unhandledFormat('GroundingChunk', jsonObject);
@@ -1495,6 +1543,9 @@ GroundingChunk _parseGroundingChunk(Object? jsonObject) {
   return GroundingChunk(
     web: jsonObject['web'] != null
         ? _parseWebGroundingChunk(jsonObject['web'])
+        : null,
+    maps: jsonObject['maps'] != null
+        ? _parseMapsGroundingChunk(jsonObject['maps'])
         : null,
   );
 }
