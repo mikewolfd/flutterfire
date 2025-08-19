@@ -284,6 +284,39 @@ void main() {
         );
       });
 
+      test('can pass a URL context tool', () async {
+        final (client, model) = createModel(
+          tools: [Tool.urlContext()],
+        );
+        const prompt = 'Some prompt';
+        await client.checkRequest(
+          () => model.generateContent([Content.text(prompt)]),
+          verifyRequest: (_, request) {
+            expect(request['tools'], [
+              {'urlContext': {}},
+            ]);
+          },
+          response: arbitraryGenerateContentResponse,
+        );
+      });
+
+      test('can pass multiple tools including URL context and Google search', () async {
+        final (client, model) = createModel(
+          tools: [Tool.googleSearch(), Tool.urlContext()],
+        );
+        const prompt = 'Some prompt';
+        await client.checkRequest(
+          () => model.generateContent([Content.text(prompt)]),
+          verifyRequest: (_, request) {
+            expect(request['tools'], [
+              {'googleSearch': {}},
+              {'urlContext': {}},
+            ]);
+          },
+          response: arbitraryGenerateContentResponse,
+        );
+      });
+
       test('can override tools and function calling config', () async {
         final (client, model) = createModel();
         const prompt = 'Some prompt';

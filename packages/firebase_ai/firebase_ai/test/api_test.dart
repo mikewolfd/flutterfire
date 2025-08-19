@@ -1153,8 +1153,159 @@ void main() {
         expect(
             () => VertexSerialization()
                 .parseGenerateContentResponse(jsonResponse),
-            throwsA(isA<FirebaseAISdkException>().having(
-                (e) => e.message, 'message', contains('ModalityTokenCount'))));
+                      throwsA(isA<FirebaseAISdkException>().having(
+              (e) => e.message, 'message', contains('ModalityTokenCount'))));
+      });
+
+      group('urlContextMetadata parsing', () {
+        test('parses valid response with URL context metadata', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'This is a response with URL context.'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'urlContextMetadata': {
+                  'urlMetadata': [
+                    {
+                      'retrievedUrl': 'https://example.com/page1',
+                      'urlRetrievalStatus': 'URL_RETRIEVAL_STATUS_SUCCESS'
+                    },
+                    {
+                      'retrievedUrl': 'https://example.com/page2',
+                      'urlRetrievalStatus': 'URL_RETRIEVAL_STATUS_FAILURE'
+                    }
+                  ]
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final urlContextMetadata = response.candidates.first.urlContextMetadata;
+
+          expect(urlContextMetadata, isNotNull);
+          expect(urlContextMetadata!.urlMetadata, hasLength(2));
+
+          final firstUrl = urlContextMetadata.urlMetadata[0];
+          expect(firstUrl.retrievedUrl, 'https://example.com/page1');
+          expect(firstUrl.urlRetrievalStatus, UrlRetrievalStatus.success);
+
+          final secondUrl = urlContextMetadata.urlMetadata[1];
+          expect(secondUrl.retrievedUrl, 'https://example.com/page2');
+          expect(secondUrl.urlRetrievalStatus, UrlRetrievalStatus.failure);
+        });
+
+        test('parses response with empty URL metadata list', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Response with empty URL metadata'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'urlContextMetadata': {
+                  'urlMetadata': []
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final urlContextMetadata = response.candidates.first.urlContextMetadata;
+
+          expect(urlContextMetadata, isNotNull);
+          expect(urlContextMetadata!.urlMetadata, isEmpty);
+        });
+
+        test('parses response with URL marked as unsafe', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Response with unsafe URL'}
+                  ]
+                },
+                'finishReason': 'STOP',
+                'urlContextMetadata': {
+                  'urlMetadata': [
+                    {
+                      'retrievedUrl': 'https://unsafe-site.com',
+                      'urlRetrievalStatus': 'URL_RETRIEVAL_STATUS_UNSAFE'
+                    }
+                  ]
+                }
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final urlContextMetadata = response.candidates.first.urlContextMetadata;
+
+          expect(urlContextMetadata, isNotNull);
+          expect(urlContextMetadata!.urlMetadata, hasLength(1));
+          expect(urlContextMetadata.urlMetadata.first.urlRetrievalStatus, 
+              UrlRetrievalStatus.unsafe);
+        });
+
+        test('parses response without URL context metadata', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Response without URL context'}
+                  ]
+                },
+                'finishReason': 'STOP'
+                // No urlContextMetadata field
+              }
+            ]
+          };
+
+          final response = VertexSerialization().parseGenerateContentResponse(jsonResponse);
+          final urlContextMetadata = response.candidates.first.urlContextMetadata;
+
+          expect(urlContextMetadata, isNull);
+        });
+
+        test('throws FormatException for invalid URL metadata structure', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'urlContextMetadata': {
+                  'urlMetadata': ['not_a_map']
+                }
+              }
+            ]
+          };
+          
+          expect(
+              () => VertexSerialization().parseGenerateContentResponse(jsonResponse),
+              throwsA(isA<FirebaseAISdkException>().having(
+                  (e) => e.message, 'message', contains('UrlMetadata'))));
+        });
+
+        test('throws FormatException for invalid URL context metadata structure', () {
+          final jsonResponse = {
+            'candidates': [
+              {
+                'urlContextMetadata': 'not_a_map'
+              }
+            ]
+          };
+          
+          expect(
+              () => VertexSerialization().parseGenerateContentResponse(jsonResponse),
+              throwsA(isA<FirebaseAISdkException>().having(
+                  (e) => e.message, 'message', contains('UrlContextMetadata'))));
+        });
       });
     });
   });

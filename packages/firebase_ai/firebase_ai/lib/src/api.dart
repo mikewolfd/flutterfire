@@ -197,7 +197,7 @@ final class Candidate {
   // ignore: public_member_api_docs
   Candidate(this.content, this.safetyRatings, this.citationMetadata,
       this.finishReason, this.finishMessage,
-      {this.groundingMetadata});
+      {this.groundingMetadata, this.urlContextMetadata});
 
   /// Generated content returned from the model.
   final Content content;
@@ -224,6 +224,9 @@ final class Candidate {
 
   /// Metadata returned to the client when grounding is enabled.
   final GroundingMetadata? groundingMetadata;
+
+  /// Metadata returned when URL context tool is used.
+  final UrlContextMetadata? urlContextMetadata;
 
   /// The concatenation of the text parts of [content], if any.
   ///
@@ -398,6 +401,65 @@ final class GroundingMetadata {
   /// These can be used to allow users to explore the search results
   /// themselves.
   final List<String> webSearchQueries;
+}
+
+/// Metadata returned when URL context tool is used in a generation request.
+///
+/// This contains information about which URLs were retrieved and their status.
+final class UrlContextMetadata {
+  // ignore: public_member_api_docs
+  UrlContextMetadata({required this.urlMetadata});
+
+  /// List of metadata for each URL that was processed.
+  final List<UrlMetadata> urlMetadata;
+}
+
+/// Metadata for a single URL that was processed by the URL context tool.
+final class UrlMetadata {
+  // ignore: public_member_api_docs
+  UrlMetadata({required this.retrievedUrl, required this.urlRetrievalStatus});
+
+  /// The URL that was retrieved.
+  final String retrievedUrl;
+
+  /// The status of the URL retrieval operation.
+  final UrlRetrievalStatus urlRetrievalStatus;
+}
+
+/// Status of URL retrieval when using the URL context tool.
+enum UrlRetrievalStatus {
+  /// URL was retrieved successfully.
+  success('URL_RETRIEVAL_STATUS_SUCCESS'),
+
+  /// URL retrieval failed.
+  failure('URL_RETRIEVAL_STATUS_FAILURE'),
+
+  /// URL was blocked due to safety reasons.
+  unsafe('URL_RETRIEVAL_STATUS_UNSAFE'),
+
+  /// URL retrieval status is unknown or unspecified.
+  unknown('URL_RETRIEVAL_STATUS_UNSPECIFIED');
+
+  const UrlRetrievalStatus(this._jsonString);
+
+  // ignore: unused_element
+  static UrlRetrievalStatus _parseValue(String jsonObject) {
+    return switch (jsonObject) {
+      'URL_RETRIEVAL_STATUS_SUCCESS' => UrlRetrievalStatus.success,
+      'URL_RETRIEVAL_STATUS_FAILURE' => UrlRetrievalStatus.failure,
+      'URL_RETRIEVAL_STATUS_UNSAFE' => UrlRetrievalStatus.unsafe,
+      'URL_RETRIEVAL_STATUS_UNSPECIFIED' => UrlRetrievalStatus.unknown,
+      _ => throw FormatException('Unhandled UrlRetrievalStatus format', jsonObject),
+    };
+  }
+
+  final String _jsonString;
+
+  /// Convert to json format.
+  String toJson() => _jsonString;
+
+  @override
+  String toString() => name;
 }
 
 /// Safety rating for a piece of content.
@@ -1234,6 +1296,11 @@ Candidate _parseCandidate(Object? jsonObject) {
         {'groundingMetadata': final Object groundingMetadata} =>
           _parseGroundingMetadata(groundingMetadata),
         _ => null
+      },
+      urlContextMetadata: switch (jsonObject) {
+        {'urlContextMetadata': final Object urlContextMetadata} =>
+          _parseUrlContextMetadata(urlContextMetadata),
+        _ => null
       });
 }
 
@@ -1463,5 +1530,37 @@ SearchEntryPoint _parseSearchEntryPoint(Object? jsonObject) {
 
   return SearchEntryPoint(
     renderedContent: renderedContent,
+  );
+}
+
+UrlContextMetadata _parseUrlContextMetadata(Object? jsonObject) {
+  if (jsonObject is! Map) {
+    throw unhandledFormat('UrlContextMetadata', jsonObject);
+  }
+
+  final urlMetadata = switch (jsonObject) {
+    {'urlMetadata': final List<Object?> urlMetadata} =>
+      urlMetadata.map(_parseUrlMetadata).toList(),
+    _ => <UrlMetadata>[],
+  };
+
+  return UrlContextMetadata(urlMetadata: urlMetadata);
+}
+
+UrlMetadata _parseUrlMetadata(Object? jsonObject) {
+  if (jsonObject is! Map) {
+    throw unhandledFormat('UrlMetadata', jsonObject);
+  }
+
+  final retrievedUrl = jsonObject['retrievedUrl'] as String? ?? '';
+  final urlRetrievalStatus = switch (jsonObject) {
+    {'urlRetrievalStatus': final String status} =>
+      UrlRetrievalStatus._parseValue(status),
+    _ => UrlRetrievalStatus.unknown,
+  };
+
+  return UrlMetadata(
+    retrievedUrl: retrievedUrl,
+    urlRetrievalStatus: urlRetrievalStatus,
   );
 }

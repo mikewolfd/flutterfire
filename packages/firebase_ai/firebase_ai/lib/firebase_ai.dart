@@ -31,6 +31,9 @@ export 'src/api.dart'
         ResponseModalities,
         SafetyRating,
         SafetySetting,
+        UrlContextMetadata,
+        UrlMetadata,
+        UrlRetrievalStatus,
         UsageMetadata;
 export 'src/base_model.dart'
     show GenerativeModel, ImagenModel, LiveGenerativeModel;
@@ -78,4 +81,5 @@ export 'src/tool.dart'
         FunctionCallingMode,
         FunctionDeclaration,
         Tool,
-        ToolConfig;
+        ToolConfig,
+        UrlContext;

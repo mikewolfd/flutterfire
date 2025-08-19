@@ -21,12 +21,12 @@ import 'schema.dart';
 /// knowledge and scope of the model.
 final class Tool {
   // ignore: public_member_api_docs
-  Tool._(this._functionDeclarations, this._googleSearch);
+  Tool._(this._functionDeclarations, this._googleSearch, this._urlContext);
 
   /// Returns a [Tool] instance with list of [FunctionDeclaration].
   static Tool functionDeclarations(
       List<FunctionDeclaration> functionDeclarations) {
-    return Tool._(functionDeclarations, null);
+    return Tool._(functionDeclarations, null, null);
   }
 
   /// Creates a tool that allows the model to use Grounding with Google Search.
@@ -47,7 +47,25 @@ final class Tool {
   ///
   /// Returns a `Tool` configured for Google Search.
   static Tool googleSearch({GoogleSearch googleSearch = const GoogleSearch()}) {
-    return Tool._(null, googleSearch);
+    return Tool._(null, googleSearch, null);
+  }
+
+  /// Creates a tool that allows the model to use URL context.
+  ///
+  /// The URL context tool lets you provide additional context to the models in
+  /// the form of URLs. By including URLs in your request, the model will access
+  /// the content from those pages to inform and enhance its response.
+  ///
+  /// The tool supports up to 20 URLs per request and can extract content from
+  /// various formats including text (HTML, JSON, plain text), images (PNG, JPEG),
+  /// and PDF documents.
+  ///
+  /// - [urlContext]: An empty [UrlContext] object. The presence of this
+  ///   object in the list of tools enables the model to use URL context.
+  ///
+  /// Returns a `Tool` configured for URL context.
+  static Tool urlContext({UrlContext urlContext = const UrlContext()}) {
+    return Tool._(null, null, urlContext);
   }
 
   /// A list of `FunctionDeclarations` available to the model that can be used
@@ -65,13 +83,19 @@ final class Tool {
   /// responses.
   final GoogleSearch? _googleSearch;
 
+  /// A tool that allows the generative model to access content from URLs to
+  /// enhance its responses.
+  final UrlContext? _urlContext;
+
   /// Convert to json object.
   Map<String, Object> toJson() => {
         if (_functionDeclarations case final _functionDeclarations?)
           'functionDeclarations':
               _functionDeclarations.map((f) => f.toJson()).toList(),
         if (_googleSearch case final _googleSearch?)
-          'googleSearch': _googleSearch.toJson()
+          'googleSearch': _googleSearch.toJson(),
+        if (_urlContext case final _urlContext?)
+          'urlContext': _urlContext.toJson()
       };
 }
 
@@ -88,6 +112,28 @@ final class Tool {
 final class GoogleSearch {
   // ignore: public_member_api_docs
   const GoogleSearch();
+
+  /// Convert to json object.
+  Map<String, Object> toJson() => {};
+}
+
+/// A tool that allows the generative model to access content from URLs to
+/// enhance its responses.
+///
+/// The URL context tool lets you provide additional context to the models in
+/// the form of URLs. By including URLs in your request, the model will access
+/// the content from those pages to inform and enhance its response.
+///
+/// Supported URL content types include:
+/// - Text (HTML, JSON, plain text, XML, CSS, JavaScript, CSV, RTF)
+/// - Images (PNG, JPEG, BMP, WebP)
+/// - PDF documents
+///
+/// The tool can process up to 20 URLs per request, with a maximum content
+/// size of 34MB per URL.
+final class UrlContext {
+  // ignore: public_member_api_docs
+  const UrlContext();
 
   /// Convert to json object.
   Map<String, Object> toJson() => {};
